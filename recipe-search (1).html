@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RecipeAI — Find Your Next Meal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #fdf8f3; --card: #ffffff; --accent: #e8521a;
+    --text: #1a1208; --muted: #7a6a5a; --border: #ede5d8;
+    --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  header {
+    background: linear-gradient(135deg, #1a0a00 0%, #3d1800 60%, #6b2a00 100%);
+    color: white; padding: 60px 20px 80px; text-align: center;
+  }
+  .logo { font-size: 12px; letter-spacing: 4px; text-transform: uppercase; color: #f4a261; margin-bottom: 14px; }
+  header h1 { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 6vw, 3.6rem); line-height: 1.1; margin-bottom: 14px; }
+  header h1 span { color: #f4a261; }
+  header p { color: #d4b8a0; font-size: 1rem; max-width: 460px; margin: 0 auto 36px; }
+
+  .search-wrap { max-width: 600px; margin: 0 auto; }
+  .search-row { display: flex; background: white; border-radius: 50px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+  .search-row input { flex: 1; border: none; outline: none; padding: 17px 22px; font-size: 1rem; font-family: 'Inter', sans-serif; color: var(--text); }
+  .search-row input::placeholder { color: #b0a090; }
+  .search-row button { background: var(--accent); border: none; color: white; font-size: 0.95rem; font-weight: 600; font-family: 'Inter', sans-serif; padding: 0 26px; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+  .search-row button:hover { background: #c43e0e; }
+
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 16px; }
+  .chip { background: rgba(255,255,255,0.12); color: #e8d0b8; border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 5px 13px; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+  .chip:hover { background: rgba(255,255,255,0.22); color: white; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 48px 20px; }
+
+  .state { text-align: center; padding: 60px 20px; }
+  .state-icon { font-size: 3.5rem; margin-bottom: 16px; }
+  .state h2 { font-family: 'Playfair Display', serif; font-size: 1.6rem; margin-bottom: 8px; }
+  .state p { color: var(--muted); max-width: 360px; margin: 0 auto; line-height: 1.6; }
+
+  .spinner { width: 44px; height: 44px; border: 4px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .results-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 8px; }
+  .results-header h2 { font-family: 'Playfair Display', serif; font-size: 1.5rem; }
+  .results-header span { color: var(--muted); font-size: 0.9rem; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+
+  .card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+  .card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+  .card-img { width: 100%; height: 180px; object-fit: cover; display: block; }
+  .card-body { padding: 16px 18px 18px; }
+  .card-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .badge { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; }
+  .badge-cuisine { background: #fde8d0; color: #a04010; }
+  .badge-category { background: #e8e4ff; color: #3d2fa0; }
+  .card-title { font-family: 'Playfair Display', serif; font-size: 1.15rem; line-height: 1.3; margin-bottom: 10px; }
+  .card-meta { display: flex; gap: 14px; font-size: 0.8rem; color: var(--muted); padding-top: 10px; border-top: 1px solid var(--border); justify-content: space-between; align-items: center; }
+  .btn-view { background: var(--accent); color: white; border: none; font-size: 0.8rem; font-weight: 600; font-family: 'Inter', sans-serif; padding: 7px 14px; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+  .btn-view:hover { background: #c43e0e; }
+
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(3px); z-index: 100; padding: 20px; align-items: flex-start; justify-content: center; overflow-y: auto; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--card); border-radius: 20px; max-width: 700px; width: 100%; margin: auto; position: relative; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+  .modal-img { width: 100%; height: 240px; object-fit: cover; display: block; }
+  .modal-hero { background: linear-gradient(135deg, #3d1800, #6b2a00); color: white; padding: 24px 28px; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; line-height: 1.2; margin-bottom: 8px; }
+  .modal-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .modal-close { position: absolute; top: 14px; right: 18px; background: rgba(0,0,0,0.4); border: none; color: white; font-size: 1.2rem; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; z-index: 2; }
+  .modal-close:hover { background: rgba(0,0,0,0.6); }
+  .modal-body { padding: 24px 28px; }
+  .section-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; margin-bottom: 12px; margin-top: 20px; }
+  .section-title:first-child { margin-top: 0; }
+
+  .ingredients-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-bottom: 4px; }
+  .ingredient-item { display: flex; align-items: center; gap: 8px; font-size: 0.87rem; background: #fff8f4; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
+  .ingredient-item::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+  .steps-list { list-style: none; }
+  .steps-list li { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; line-height: 1.7; }
+  .steps-list li:last-child { border-bottom: none; }
+  .step-num { flex-shrink: 0; width: 26px; height: 26px; background: var(--accent); color: white; border-radius: 50%; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+
+  .yt-btn { display: inline-flex; align-items: center; gap: 8px; background: #ff0000; color: white; text-decoration: none; font-size: 0.85rem; font-weight: 600; padding: 9px 18px; border-radius: 8px; margin-top: 18px; transition: background 0.2s; }
+  .yt-btn:hover { background: #cc0000; }
+
+  @media (max-width: 500px) {
+    .modal-body { padding: 18px; }
+    .modal-hero { padding: 18px; }
+    .modal-img { height: 180px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">✦ Thousands of Real Recipes</div>
+  <h1>Find Any <span>Recipe</span><br>In Seconds</h1>
+  <p>Search thousands of real recipes by dish name or ingredient. No login required.</p>
+  <div class="search-wrap">
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="e.g. chicken, pasta, biryani, chocolate cake…" />
+      <button onclick="doSearch()">Search 🔍</button>
+    </div>
+    <div class="chips">
+      <span class="chip" onclick="quickSearch('chicken')">🍗 Chicken</span>
+      <span class="chip" onclick="quickSearch('pasta')">🍝 Pasta</span>
+      <span class="chip" onclick="quickSearch('biryani')">🍚 Biryani</span>
+      <span class="chip" onclick="quickSearch('cake')">🎂 Cake</span>
+      <span class="chip" onclick="quickSearch('soup')">🍲 Soup</span>
+      <span class="chip" onclick="quickSearch('salad')">🥗 Salad</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="state" id="stateIdle">
+    <div class="state-icon">👨‍🍳</div>
+    <h2>What are you craving?</h2>
+    <p>Type a dish or ingredient above to discover real recipes instantly.</p>
+  </div>
+  <div class="state" id="stateLoading" style="display:none">
+    <div class="spinner"></div>
+    <h2>Searching recipes…</h2>
+    <p>Finding the best matches for you.</p>
+  </div>
+  <div class="state" id="stateError" style="display:none">
+    <div class="state-icon">😕</div>
+    <h2>No recipes found</h2>
+    <p id="errorMsg">Try a different term like "chicken", "pasta", or "cake".</p>
+  </div>
+  <div id="stateResults" style="display:none">
+    <div class="results-header">
+      <h2 id="resultsTitle">Recipes</h2>
+      <span id="resultsCount"></span>
+    </div>
+    <div class="grid" id="recipeGrid"></div>
+  </div>
+</main>
+
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+  let currentMeals = [];
+
+  document.getElementById('searchInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSearch();
+  });
+
+  function quickSearch(q) {
+    document.getElementById('searchInput').value = q;
+    doSearch();
+  }
+
+  function setState(name) {
+    ['stateIdle','stateLoading','stateError','stateResults'].forEach(id => {
+      document.getElementById(id).style.display = (id === name) ? '' : 'none';
+    });
+  }
+
+  async function doSearch() {
+    const q = document.getElementById('searchInput').value.trim();
+    if (!q) return;
+    setState('stateLoading');
+
+    try {
+      const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(q)}`);
+      const data = await res.json();
+
+      if (!data.meals || data.meals.length === 0) {
+        setState('stateError');
+        document.getElementById('errorMsg').textContent = `No recipes found for "${q}". Try "chicken", "pasta", or "cake".`;
+        return;
+      }
+
+      currentMeals = data.meals;
+      renderResults(q, currentMeals);
+    } catch(err) {
+      setState('stateError');
+      document.getElementById('errorMsg').textContent = 'Network error. Please check your connection and try again.';
+    }
+  }
+
+  function renderResults(query, meals) {
+    setState('stateResults');
+    document.getElementById('resultsTitle').textContent = `Results for "${query}"`;
+    document.getElementById('resultsCount').textContent = `${meals.length} recipe${meals.length !== 1 ? 's' : ''} found`;
+
+    document.getElementById('recipeGrid').innerHTML = meals.map((m, i) => `
+      <div class="card" onclick="openRecipe(${i})">
+        <img class="card-img" src="${m.strMealThumb}" alt="${m.strMeal}" loading="lazy" />
+        <div class="card-body">
+          <div class="card-badges">
+            ${m.strArea ? `<span class="badge badge-cuisine">${m.strArea}</span>` : ''}
+            ${m.strCategory ? `<span class="badge badge-category">${m.strCategory}</span>` : ''}
+          </div>
+          <div class="card-title">${m.strMeal}</div>
+          <div class="card-meta">
+            <span>📝 ${getIngredientCount(m)} ingredients</span>
+            <button class="btn-view">View Recipe →</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function getIngredientCount(meal) {
+    let count = 0;
+    for (let i = 1; i <= 20; i++) {
+      if (meal[`strIngredient${i}`] && meal[`strIngredient${i}`].trim()) count++;
+    }
+    return count;
+  }
+
+  function getIngredients(meal) {
+    const items = [];
+    for (let i = 1; i <= 20; i++) {
+      const ing = meal[`strIngredient${i}`];
+      const measure = meal[`strMeasure${i}`];
+      if (ing && ing.trim()) {
+        items.push(`${measure ? measure.trim() + ' ' : ''}${ing.trim()}`);
+      }
+    }
+    return items;
+  }
+
+  function getSteps(meal) {
+    if (!meal.strInstructions) return [];
+    return meal.strInstructions
+      .split(/\r\n|\n|\r/)
+      .map(s => s.trim())
+      .filter(s => s.length > 10);
+  }
+
+  function openRecipe(idx) {
+    const m = currentMeals[idx];
+    const ingredients = getIngredients(m);
+    const steps = getSteps(m);
+
+    document.getElementById('modalContent').innerHTML = `
+      <img class="modal-img" src="${m.strMealThumb}" alt="${m.strMeal}" />
+      <div class="modal-hero">
+        <div class="modal-title">${m.strMeal}</div>
+        <div class="modal-badges">
+          ${m.strArea ? `<span class="badge badge-cuisine">${m.strArea}</span>` : ''}
+          ${m.strCategory ? `<span class="badge badge-category">${m.strCategory}</span>` : ''}
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="section-title">🛒 Ingredients (${ingredients.length})</div>
+        <div class="ingredients-grid">
+          ${ingredients.map(ing => `<div class="ingredient-item">${ing}</div>`).join('')}
+        </div>
+        <div class="section-title">👨‍🍳 Instructions</div>
+        <ol class="steps-list">
+          ${steps.map((step, i) => `<li><span class="step-num">${i+1}</span><span>${step}</span></li>`).join('')}
+        </ol>
+        ${m.strYoutube ? `<a class="yt-btn" href="${m.strYoutube}" target="_blank" rel="noopener">▶ Watch on YouTube</a>` : ''}
+      </div>
+    `;
+
+    document.getElementById('overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal(e) {
+    if (e.target === document.getElementById('overlay')) closeModalDirect();
+  }
+  function closeModalDirect() {
+    document.getElementById('overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
+</script>
+</body>
+</html>
